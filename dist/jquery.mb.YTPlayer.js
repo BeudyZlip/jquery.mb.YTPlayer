@@ -2,7 +2,7 @@
  _ jquery.mb.components                                                                                                                             _
  _                                                                                                                                                  _
  _ file: jquery.mb.YTPlayer.src.js                                                                                                                  _
- _ last modified: 24/10/16 22.30                                                                                                                    _
+ _ last modified: 05/01/16 17.43                                                                                                                    _
  _                                                                                                                                                  _
  _ Open Lab s.r.l., Florence - Italy                                                                                                                _
  _                                                                                                                                                  _
@@ -51,8 +51,8 @@ var getYTPVideoID = function( url ) {
 	jQuery.mbYTPlayer = {
 		name: "jquery.mb.YTPlayer",
 		version: "3.0.10",
-		build: "6087",
-		author: "Matteo Bicocchi (pupunzi)",
+		build: "6057",
+		author: "Matteo Bicocchi",
 		apiKey: "",
 		defaults: {
 			containment: "body",
@@ -174,7 +174,7 @@ var getYTPVideoID = function( url ) {
 				};
 				YTPlayer.canGoFullScreen = !( jQuery.browser.msie || jQuery.browser.opera || isIframe() );
 				if( !YTPlayer.canGoFullScreen ) YTPlayer.opt.realfullscreen = false;
-				if( !$YTPlayer.attr( "id" ) ) $YTPlayer.attr( "id", "ytp_" + new Date().getTime() );
+				if( !$YTPlayer.attr( "id" ) ) $YTPlayer.attr( "id", "video_" + new Date().getTime() );
 				var playerID = "mbYTP_" + YTPlayer.id;
 				YTPlayer.isAlone = false;
 				YTPlayer.hasFocus = true;
@@ -266,7 +266,6 @@ var getYTPVideoID = function( url ) {
 				YTPlayer.opt.containment.children().not( "script, style" ).each( function() {
 					if( jQuery( this ).css( "position" ) == "static" ) jQuery( this ).css( "position", "relative" );
 				} );
-
 				if( YTPlayer.isBackground ) {
 					jQuery( "body" ).css( {
 						boxSizing: "border-box"
@@ -293,17 +292,15 @@ var getYTPVideoID = function( url ) {
 					opacity: 1
 				} );
 
-				if( !jQuery.browser.mobile ) {
-					playerBox.after( overlay );
-					YTPlayer.overlay = overlay;
-				}
+				playerBox.after( overlay );
+				YTPlayer.overlay = overlay;
 
 				if( !YTPlayer.isBackground ) {
 					overlay.on( "mouseenter", function() {
-						if( YTPlayer.controlBar && YTPlayer.controlBar.length )
+						if( YTPlayer.controlBar.length )
 							YTPlayer.controlBar.addClass( "visible" );
 					} ).on( "mouseleave", function() {
-						if( YTPlayer.controlBar && YTPlayer.controlBar.length )
+						if( YTPlayer.controlBar.length )
 							YTPlayer.controlBar.removeClass( "visible" );
 					} );
 				}
@@ -324,12 +321,11 @@ var getYTPVideoID = function( url ) {
 				if( jQuery.browser.mobile && !YTPlayer.canPlayOnMobile ) {
 
 					if( YTPlayer.opt.mobileFallbackImage ) {
-						wrapper.css( {
+						YTPlayer.opt.containment.css( {
 							backgroundImage: "url(" + YTPlayer.opt.mobileFallbackImage + ")",
 							backgroundPosition: "center center",
 							backgroundSize: "cover",
-							backgroundRepeat: "no-repeat",
-							opacity: 1
+							backgroundRepeat: "no-repeat"
 						} )
 					};
 
@@ -367,21 +363,42 @@ var getYTPVideoID = function( url ) {
 								} );
 							}
 							new YT.Player( playerID, {
+								// videoId: YTPlayer.videoID.toString(),
+								// width: '100%',
+								// height: h,
+								// playerVars: playerVars,
+								// events: {
+								// 	'onReady': function( event ) {
+								// 		YTPlayer.player = event.target;
+								// 		playerBox.css( {
+								// 			opacity: 1
+								// 		} );
+								// 		YTPlayer.wrapper.css( {
+								// 			opacity: 1
+								// 		} );
+								// 	}
+								// }
+
 								videoId: YTPlayer.videoID.toString(),
-								width: '100%',
-								height: h,
-								playerVars: playerVars,
-								events: {
-									'onReady': function( event ) {
-										YTPlayer.player = event.target;
-										playerBox.css( {
-											opacity: 1
-										} );
-										YTPlayer.wrapper.css( {
-											opacity: 1
-										} );
-									}
-								}
+	                            playerVars: playerVars,
+	                            events: {
+	                                'onReady': function( event ) {
+	                                    YTPlayer.player = event.target;
+	                                    if( YTPlayer.isReady ) return;
+	                                    YTPlayer.isReady = YTPlayer.isPlayer && !YTPlayer.opt.autoPlay ? false : true;
+	                                    YTPlayer.playerEl = YTPlayer.player.getIframe();
+
+	                                    jQuery( YTPlayer.playerEl ).unselectable();
+
+	                                    $YTPlayer.optimizeDisplay();
+	                                    // YTPlayer.videoID = videoID;
+	                                    jQuery( window ).off( "resize.YTP_" + YTPlayer.id ).on( "resize.YTP_" + YTPlayer.id, function() {
+	                                        $YTPlayer.optimizeDisplay();
+	                                    } );
+
+	                                    jQuery.mbYTPlayer.checkForState( YTPlayer );
+	                                }
+	                            }
 							} );
 							return;
 						}
@@ -768,7 +785,6 @@ var getYTPVideoID = function( url ) {
 			ytp.backgroundIsInited = false;
 			YTPlayer.isInit = false;
 			YTPlayer.videoID = null;
-			YTPlayer.isReady = false;
 			var playerBox = YTPlayer.wrapper;
 			playerBox.remove();
 			jQuery( "#controlBar_" + YTPlayer.id ).remove();
@@ -1620,7 +1636,7 @@ var getYTPVideoID = function( url ) {
 			 */
 
 			YTPlayer.preventTrigger = true;
-			YTPlayer.state = 2;
+			YTPlayer.state = 2
 			jQuery( YTPlayer ).YTPPause();
 
 			jQuery( YTPlayer ).muteYTPVolume();
@@ -1806,14 +1822,14 @@ var getYTPVideoID = function( url ) {
 		//data.optimizeDisplay = YTPlayer.isPlayer ? false : data.optimizeDisplay;
 
 		if( YTPlayer.opt.optimizeDisplay ) {
-			var abundance = YTPlayer.isPlayer ? 0 : 80;
+			var abundance = 100;
 			var win = {};
 			var el = YTPlayer.wrapper;
 
 			win.width = el.outerWidth();
-			win.height = el.outerHeight() + abundance;
+			win.height = el.outerHeight();
 
-			vid.width = win.width;
+			vid.width = win.width + abundance;
 			vid.height = YTPlayer.opt.ratio == "16/9" ? Math.ceil( vid.width * ( 9 / 16 ) ) : Math.ceil( vid.width * ( 3 / 4 ) );
 
 			vid.marginTop = -( ( vid.height - win.height ) / 2 );
@@ -1823,7 +1839,7 @@ var getYTPVideoID = function( url ) {
 
 			if( lowest ) {
 
-				vid.height = win.height;
+				vid.height = win.height + abundance;
 				vid.width = YTPlayer.opt.ratio == "16/9" ? Math.floor( vid.height * ( 16 / 9 ) ) : Math.floor( vid.height * ( 4 / 3 ) );
 
 				vid.marginTop = 0;
@@ -1833,34 +1849,29 @@ var getYTPVideoID = function( url ) {
 
 			for( var a in YTPAlign ) {
 
-				if( YTPAlign.hasOwnProperty( a ) ) {
+				//var al = YTPAlign[ a ].trim();
+				var al = YTPAlign[ a ].replace( / /g, "" );
 
-					var al = YTPAlign[ a ].replace( / /g, "" );
+				switch( al ) {
 
-					switch( al ) {
+					case "top":
+						vid.marginTop = lowest ? -( ( vid.height - win.height ) / 2 ) : 0;
+						break;
 
-						case "top":
-							vid.marginTop = lowest ? -( ( vid.height - win.height ) / 2 ) : 0;
-							break;
+					case "bottom":
+						vid.marginTop = lowest ? 0 : -( vid.height - win.height );
+						break;
 
-						case "bottom":
-							vid.marginTop = lowest ? 0 : -( vid.height - ( win.height ) );
-							break;
+					case "left":
+						vid.marginLeft = 0;
+						break;
 
-						case "left":
-							vid.marginLeft = 0;
-							break;
+					case "right":
+						vid.marginLeft = lowest ? -( vid.width - win.width ) : 0;
+						break;
 
-						case "right":
-							vid.marginLeft = lowest ? -( vid.width - win.width ) : 0;
-							break;
-
-						default:
-							if( vid.width > win.width )
-								vid.marginLeft = -( ( vid.width - win.width ) / 2 );
-							break;
-					}
-
+					default:
+						break;
 				}
 
 			}
@@ -1876,8 +1887,7 @@ var getYTPVideoID = function( url ) {
 			width: vid.width,
 			height: vid.height,
 			marginTop: vid.marginTop,
-			marginLeft: vid.marginLeft,
-			maxWidth: "initial"
+			marginLeft: vid.marginLeft
 		} );
 
 	};
